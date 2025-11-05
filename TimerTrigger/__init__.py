@@ -1,19 +1,15 @@
-import logging
 import os
 import requests
 import json
 from azure.eventhub import EventHubProducerClient, EventData
 from datetime import datetime, UTC
-import azure.functions as func
+from dotenv import load_dotenv
 
-# قراءة المتغيرات من Azure Application Settings
-AZURE_MAPS_KEY = os.environ.get("AZURE_MAPS_KEY")
-EVENTHUB_CONNECTION_STR = os.environ.get("EVENTHUB_CONNECTION_STR")
-EVENTHUB_NAME = os.environ.get("EVENTHUB_NAME")
-
-# التحقق من وجود المتغيرات
-if not all([AZURE_MAPS_KEY, EVENTHUB_CONNECTION_STR, EVENTHUB_NAME]):
-    logging.error("Missing required environment variables!")
+# تحميل المفاتيح
+load_dotenv()
+AZURE_MAPS_KEY = "MEf5Ey7DKZcevR4aa2CItXjIgnYqg5NhXHBJCrARwW6tLNlIkdKiJQQJ99BJAC5RqLJXZEq6AAAgAZMP2HQE"
+EVENTHUB_CONNECTION_STR = "Endpoint=sb://trafficevents.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=KSO40tZT2YRxcgvbWASeCowhtMjb3rX7W+AEhJReg3E="
+EVENTHUB_NAME = "TrafficEvents"
 
 MAPS_URL = "https://atlas.microsoft.com/traffic/incident"
 MAPS_PARAMS = {
@@ -30,6 +26,7 @@ cities = [
     {"name": "Ismailia", "minLon": 32.25, "minLat": 30.55, "maxLon": 32.35, "maxLat": 30.65}
 ]
 
+
 def get_azure_maps_data(bbox):
     MAPS_PARAMS["bbox"] = bbox
     try:
@@ -37,10 +34,10 @@ def get_azure_maps_data(bbox):
         if response.status_code == 200:
             return response.json()
         else:
-            logging.error(f"[ERROR] {response.status_code} - {response.text}")
+            print(f"[ERROR] {response.status_code} - {response.text}")
             return None
     except Exception as e:
-        logging.error(f"[EXCEPTION] Failed to fetch data: {e}")
+        print(f"[EXCEPTION] Failed to fetch data: {e}")
         return None
 
 
@@ -53,11 +50,14 @@ def send_to_eventhub(data):
 
         with producer:
             batch = producer.create_batch()
+            logs = []  
 
-            if "data" in data and "incidents" in data["data"]:
-                for incident in data["data"]["incidents"]:
-                    coords = incident.get("geometry", {}).get("coordinates", [None, None])
-                    raw_timestamp = incident.get("properties", {}).get("lastModified", "")
+            if "data" in data and "features" in data["data"]:
+                for feature in data["data"]["features"]:
+                    props = feature.get("properties", {})
+                    geom = feature.get("geometry", {})
+                    coords = geom.get("coordinates", [None, None])
+                    raw_timestamp = props.get("lastModifiedTime")
 
                     try:
                         if raw_timestamp:
@@ -72,11 +72,20 @@ def send_to_eventhub(data):
                         "city": data.get("city", "Unknown"),
                         "latitude": coords[1],
                         "longitude": coords[0],
-                        "description": incident.get("properties", {}).get("description", "No description"),
+                        "description": props.get("description", "No description"),
+                        "incidentType": props.get("incidentType"),
+                        "severity": props.get("severity"),
+                        "isRoadClosed": props.get("isRoadClosed"),
+                        "delay": props.get("delay"),
+                        "title": props.get("title"),
                         "timestamp": timestamp_iso
                     }
 
-                    batch.add(EventData(json.dumps(event)))
+                    print(json.dumps(event, ensure_ascii=False, indent=2))
+
+                    logs.append(event)
+
+                    batch.add(EventData(json.dumps(event, ensure_ascii=False)))
 
             else:
                 event = {
@@ -86,29 +95,25 @@ def send_to_eventhub(data):
                     "description": "No incidents found",
                     "timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
                 }
-                batch.add(EventData(json.dumps(event)))
+                print(json.dumps(event, ensure_ascii=False, indent=2))
+                logs.append(event)
+                batch.add(EventData(json.dumps(event, ensure_ascii=False)))
 
             producer.send_batch(batch)
-        logging.info(f"[INFO] {data.get('city', 'Unknown')} data sent to Event Hub successfully.")
+
+        with open("test_logs.json", "a", encoding="utf-8") as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+        print(f"[INFO] ✅ {data.get('city', 'Unknown')} data sent and logged successfully.\n")
+
     except Exception as e:
-        logging.error(f"[EXCEPTION] Failed to send to Event Hub: {e}")
+        print(f"[EXCEPTION] Failed to send to Event Hub: {e}")
 
 
-def main(mytimer: func.TimerRequest) -> None:
-    utc_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
-    
-    if mytimer.past_due:
-        logging.info('The timer is past due!')
-    
-    logging.info('Timer trigger function executed at %s', utc_timestamp)
-
+if __name__ == "__main__":
     for city in cities:
         bbox = f"{city['minLon']},{city['minLat']},{city['maxLon']},{city['maxLat']}"
-        logging.info(f"Fetching data for {city['name']}...")
         data = get_azure_maps_data(bbox)
         if data:
             send_to_eventhub({"city": city["name"], "data": data})
-        else:
-            logging.warning(f"No data received for {city['name']}")
-    
-    logging.info('Timer trigger function completed successfully')
