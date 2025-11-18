@@ -3,7 +3,6 @@ import requests
 import json
 from azure.eventhub import EventHubProducerClient, EventData
 from datetime import datetime, UTC
-from dotenv import load_dotenv
 
 # تحميل المفاتيح
 load_dotenv()
