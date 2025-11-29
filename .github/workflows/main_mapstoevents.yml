@@ -80,5 +80,6 @@ jobs:
           app-name: 'MapsToEvents'
           slot-name: 'Production'
           package: '.'
-          scm-do-build-during-deployment: false
+          scm-do-build-during-deployment: true
+
 
