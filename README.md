@@ -4,10 +4,8 @@ A fully automated **real-time data engineering pipeline** built on Microsoft Azu
 
 ## Architecture Overview
 Azure Maps → Function App → Event Hubs → Stream Analytics → Power BI
-                                  ↓
-                             Database → Future ML Model
+Database → Future ML Model
 
----
 
 ## Project Description
 
@@ -19,7 +17,6 @@ This project features a real-time traffic monitoring system that streams traffic
 - Live Power BI dashboard visualization  
 - ML-ready data architecture  
 
----
 
 ## Objectives
 
@@ -29,7 +26,6 @@ This project features a real-time traffic monitoring system that streams traffic
 - Ensure high throughput, low latency pipeline  
 - Prepare foundation for predictive analytics  
 
----
 
 ## Tools and Technologies
 
@@ -45,7 +41,6 @@ This project features a real-time traffic monitoring system that streams traffic
 | SQL | Database operations |
 | Log Analytics | Pipeline monitoring |
 
----
 
 ## Stakeholders and Benefits
 
@@ -57,7 +52,6 @@ This project features a real-time traffic monitoring system that streams traffic
 | Researchers | Clean, continuous dataset for ML models |
 | Government Decision Makers | Strategic mobility insights |
 
----
 
 ## Database Design
 
@@ -80,7 +74,6 @@ This project features a real-time traffic monitoring system that streams traffic
 - Each processed window is stored in SQL  
 - Power BI consumes SQL for live visuals and trend analysis  
 
----
 
 ## Power BI Dashboard Design
 
@@ -100,7 +93,6 @@ This project features a real-time traffic monitoring system that streams traffic
 - Interactive filtering  
 - Future scalability for ML integration  
 
----
 
 ## Deployment Steps (High-Level)
 
@@ -112,3 +104,11 @@ This project features a real-time traffic monitoring system that streams traffic
    - Output: SQL Database and Power BI  
 5. Create SQL Database with TrafficData schema  
 6. Publish dashboard in Power BI 
+
+
+## Future Enhancements
+
+- Predictive modeling for congestion  
+- Incident anomaly detection  
+- Weather and IoT sensor integration  
+- Mobile alert system for drivers
